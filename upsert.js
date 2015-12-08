@@ -26,7 +26,7 @@ CollectionHooks.defineAdvice("upsert", function (userId, _super, instance, aspec
       var fetchFields = aspectGroup.upsert.before.length? fetchFieldsBefore : fetchPrevious? fetchFieldsAfter : ['_id'];
 
       fields = CollectionHooks.getFields(args[1]);
-      docs = CollectionHooks.getDocs.call(self, collection, args[0], args[2], fetchFieldsBefore).fetch();
+      docs = CollectionHooks.getDocs.call(self, collection, args[0], args[2], fetchFields).fetch();
       docIds = _.map(docs, function (doc) { return doc._id; });
     }
 
@@ -54,7 +54,7 @@ CollectionHooks.defineAdvice("upsert", function (userId, _super, instance, aspec
   }
 
   function afterUpdate(affected, err) {
-    if (!suppressAspects) {
+    if (!suppressAspects && aspectGroup.update.after.length) {
       var fields = CollectionHooks.getFields(args[1]);
       var docs = CollectionHooks.getDocs.call(self, collection, {_id: {$in: docIds}}, args[2], fetchFieldsAfter).fetch();
 
