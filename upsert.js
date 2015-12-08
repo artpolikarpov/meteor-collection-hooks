@@ -5,6 +5,7 @@ CollectionHooks.defineAdvice("upsert", function (userId, _super, instance, aspec
   var async = _.isFunction(callback);
   var docs, docIds, fields, abort, prev = {};
   var collection = _.has(self, "_collection") ? self._collection : self;
+  var fetchFields = CollectionHooks.extendOptions(instance.hookOptions, {}, "all", "upsert").fetchFields;
 
   // args[0] : selector
   // args[1] : mutator
@@ -19,7 +20,7 @@ CollectionHooks.defineAdvice("upsert", function (userId, _super, instance, aspec
   if (!suppressAspects) {
     if (aspectGroup.upsert.before) {
       fields = CollectionHooks.getFields(args[1]);
-      docs = CollectionHooks.getDocs.call(self, collection, args[0], args[2]).fetch();
+      docs = CollectionHooks.getDocs.call(self, collection, args[0], args[2], fetchFields).fetch();
       docIds = _.map(docs, function (doc) { return doc._id; });
     }
 
@@ -50,7 +51,7 @@ CollectionHooks.defineAdvice("upsert", function (userId, _super, instance, aspec
   function afterUpdate(affected, err) {
     if (!suppressAspects) {
       var fields = CollectionHooks.getFields(args[1]);
-      var docs = CollectionHooks.getDocs.call(self, collection, {_id: {$in: docIds}}, args[2]).fetch();
+      var docs = CollectionHooks.getDocs.call(self, collection, {_id: {$in: docIds}}, args[2], fetchFields).fetch();
 
       _.each(aspectGroup.update.after, function (o) {
         _.each(docs, function (doc) {
@@ -67,7 +68,7 @@ CollectionHooks.defineAdvice("upsert", function (userId, _super, instance, aspec
 
   function afterInsert(id, err) {
     if (!suppressAspects) {
-      var doc = CollectionHooks.getDocs.call(self, collection, {_id: id}, args[0], {}).fetch()[0]; // 3rd argument passes empty object which causes magic logic to imply limit:1
+      var doc = CollectionHooks.getDocs.call(self, collection, {_id: id}, args[0], {}, fetchFields).fetch()[0]; // 3rd argument passes empty object which causes magic logic to imply limit:1
       var lctx = _.extend({transform: getTransform(doc), _id: id, err: err}, ctx);
       _.each(aspectGroup.insert.after, function (o) {
         o.aspect.call(lctx, userId, doc);

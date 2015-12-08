@@ -155,10 +155,10 @@ CollectionHooks.extendOptions = function extendOptions(source, options, pointcut
   return options;
 };
 
-CollectionHooks.getDocs = function getDocs(collection, selector, options) {
+CollectionHooks.getDocs = function getDocs(collection, selector, options, fetchFields) {
   var self = this;
 
-  var findOptions = {transform: null, reactive: false}; // added reactive: false
+  var findOptions = {transform: null, reactive: false, fields: fetchFields}; // added reactive: false
 
   /*
   // No "fetch" support at this time.
