@@ -5,7 +5,10 @@ CollectionHooks.defineAdvice("update", function (userId, _super, instance, aspec
   var async = _.isFunction(callback);
   var docs, docIds, fields, abort, prev = {};
   var collection = _.has(self, "_collection") ? self._collection : self;
-  var fetchFields = CollectionHooks.extendOptions(instance.hookOptions, {}, "all", "update").fetchFields;
+  var fetchPrevious = _.some(aspects.after, function (o) { return o.options.fetchPrevious !== false; }) &&
+            CollectionHooks.extendOptions(instance.hookOptions, {}, "after", "update").fetchPrevious !== false;
+  var fetchFieldsBefore = CollectionHooks.extendOptions(instance.hookOptions, {}, "before", "update").fetchFields;
+  var fetchFieldsAfter = CollectionHooks.extendOptions(instance.hookOptions, {}, "after", "update").fetchFields;
 
   // args[0] : selector
   // args[1] : mutator
@@ -19,18 +22,19 @@ CollectionHooks.defineAdvice("update", function (userId, _super, instance, aspec
 
   if (!suppressAspects) {
     try {
-      if (aspects.before || aspects.after) {
+      if (aspects.before.length || aspects.after.length) {
+        var fetchFields = aspects.before.length? fetchFieldsBefore : fetchPrevious? fetchFieldsAfter : ['_id'];
+
         fields = CollectionHooks.getFields(args[1]);
         docs = CollectionHooks.getDocs.call(self, collection, args[0], args[2], fetchFields).fetch();
         docIds = _.map(docs, function (doc) { return doc._id; });
       }
 
       // copy originals for convenience for the "after" pointcut
-      if (aspects.after) {
+      if (aspects.after.length) {
         prev.mutator = EJSON.clone(args[1]);
         prev.options = EJSON.clone(args[2]);
-        if (_.some(aspects.after, function (o) { return o.options.fetchPrevious !== false; }) &&
-            CollectionHooks.extendOptions(instance.hookOptions, {}, "after", "update").fetchPrevious !== false) {
+        if (fetchPrevious) {
           prev.docs = {};
           _.each(docs, function (doc) {
             prev.docs[doc._id] = EJSON.clone(doc);
@@ -56,7 +60,7 @@ CollectionHooks.defineAdvice("update", function (userId, _super, instance, aspec
   function after(affected, err) {
     if (!suppressAspects) {
       var fields = CollectionHooks.getFields(args[1]);
-      var docs = CollectionHooks.getDocs.call(self, collection, {_id: {$in: docIds}}, args[2], fetchFields).fetch();
+      var docs = CollectionHooks.getDocs.call(self, collection, {_id: {$in: docIds}}, args[2], fetchFieldsAfter).fetch();
 
       _.each(aspects.after, function (o) {
         _.each(docs, function (doc) {

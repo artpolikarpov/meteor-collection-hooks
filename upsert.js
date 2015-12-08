@@ -5,7 +5,11 @@ CollectionHooks.defineAdvice("upsert", function (userId, _super, instance, aspec
   var async = _.isFunction(callback);
   var docs, docIds, fields, abort, prev = {};
   var collection = _.has(self, "_collection") ? self._collection : self;
-  var fetchFields = CollectionHooks.extendOptions(instance.hookOptions, {}, "all", "upsert").fetchFields;
+  var fetchPrevious = _.some(aspectGroup.update.after, function (o) { return o.options.fetchPrevious !== false; }) &&
+          CollectionHooks.extendOptions(instance.hookOptions, {}, "after", "update").fetchPrevious !== false;
+  var fetchFieldsBefore = CollectionHooks.extendOptions(instance.hookOptions, {}, "before", "upsert").fetchFields;
+  var fetchFieldsAfter = CollectionHooks.extendOptions(instance.hookOptions, {}, "after", "upsert").fetchFields ||
+      CollectionHooks.extendOptions(instance.hookOptions, {}, "after", "update").fetchFields;
 
   // args[0] : selector
   // args[1] : mutator
@@ -18,16 +22,17 @@ CollectionHooks.defineAdvice("upsert", function (userId, _super, instance, aspec
   }
 
   if (!suppressAspects) {
-    if (aspectGroup.upsert.before) {
+    if (aspectGroup.upsert.before.length || aspectGroup.update.after.length) {
+      var fetchFields = aspectGroup.upsert.before.length? fetchFieldsBefore : fetchPrevious? fetchFieldsAfter : ['_id'];
+
       fields = CollectionHooks.getFields(args[1]);
-      docs = CollectionHooks.getDocs.call(self, collection, args[0], args[2], fetchFields).fetch();
+      docs = CollectionHooks.getDocs.call(self, collection, args[0], args[2], fetchFieldsBefore).fetch();
       docIds = _.map(docs, function (doc) { return doc._id; });
     }
 
     // copy originals for convenience for the "after" pointcut
-    if (aspectGroup.update.after) {
-      if (_.some(aspectGroup.update.after, function (o) { return o.options.fetchPrevious !== false; }) &&
-          CollectionHooks.extendOptions(instance.hookOptions, {}, "after", "update").fetchPrevious !== false) {
+    if (aspectGroup.update.after.length) {
+      if (fetchPrevious) {
         prev.mutator = EJSON.clone(args[1]);
         prev.options = EJSON.clone(args[2]);
         prev.docs = {};
@@ -51,7 +56,7 @@ CollectionHooks.defineAdvice("upsert", function (userId, _super, instance, aspec
   function afterUpdate(affected, err) {
     if (!suppressAspects) {
       var fields = CollectionHooks.getFields(args[1]);
-      var docs = CollectionHooks.getDocs.call(self, collection, {_id: {$in: docIds}}, args[2], fetchFields).fetch();
+      var docs = CollectionHooks.getDocs.call(self, collection, {_id: {$in: docIds}}, args[2], fetchFieldsAfter).fetch();
 
       _.each(aspectGroup.update.after, function (o) {
         _.each(docs, function (doc) {
@@ -68,7 +73,7 @@ CollectionHooks.defineAdvice("upsert", function (userId, _super, instance, aspec
 
   function afterInsert(id, err) {
     if (!suppressAspects) {
-      var doc = CollectionHooks.getDocs.call(self, collection, {_id: id}, args[0], {}, fetchFields).fetch()[0]; // 3rd argument passes empty object which causes magic logic to imply limit:1
+      var doc = CollectionHooks.getDocs.call(self, collection, {_id: id}, args[0], {}, fetchFieldsAfter).fetch()[0]; // 3rd argument passes empty object which causes magic logic to imply limit:1
       var lctx = _.extend({transform: getTransform(doc), _id: id, err: err}, ctx);
       _.each(aspectGroup.insert.after, function (o) {
         o.aspect.call(lctx, userId, doc);

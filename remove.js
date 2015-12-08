@@ -5,21 +5,21 @@ CollectionHooks.defineAdvice("remove", function (userId, _super, instance, aspec
   var async = _.isFunction(callback);
   var docs, abort, prev = [];
   var collection = _.has(self, "_collection") ? self._collection : self;
-  var fetchFields = CollectionHooks.extendOptions(instance.hookOptions, {}, "all", "remove").fetchFields;
+  var fetchFieldsBefore = CollectionHooks.extendOptions(instance.hookOptions, {}, "before", "remove").fetchFields;
+  var fetchFieldsAfter = CollectionHooks.extendOptions(instance.hookOptions, {}, "after", "remove").fetchFields;
 
   // args[0] : selector
   // args[1] : callback
 
-  console.log('remove.js; fetchFields:', fetchFields);
-
   if (!suppressAspects) {
     try {
-      if (aspects.before || aspects.after) {
+      if (aspects.before.length || aspects.after.length) {
+        var fetchFields = aspects.before.length? fetchFieldsBefore : fetchFieldsAfter;
         docs = CollectionHooks.getDocs.call(self, collection, args[0], null, fetchFields).fetch();
       }
 
       // copy originals for convenience for the "after" pointcut
-      if (aspects.after) {
+      if (aspects.after.length) {
         _.each(docs, function (doc) {
           prev.push(EJSON.clone(doc));
         });
