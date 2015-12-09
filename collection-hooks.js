@@ -158,17 +158,14 @@ CollectionHooks.extendOptions = function extendOptions(source, options, pointcut
 CollectionHooks.getDocs = function getDocs(collection, selector, options, fetchFields) {
   var self = this;
 
-  var findOptions = {transform: null, reactive: false, fields: fetchFields}; // added reactive: false
+  var findOptions = {transform: null, reactive: false}; // added reactive: false
 
-  /*
-  // No "fetch" support at this time.
-  if (!self._validators.fetchAllFields) {
+  if (fetchFields && fetchFields.length) {
     findOptions.fields = {};
-    _.each(self._validators.fetch, function(fieldName) {
+    _.each(fetchFields, function(fieldName) {
       findOptions.fields[fieldName] = 1;
     });
   }
-  */
 
   // Bit of a magic condition here... only "update" passes options, so this is
   // only relevant to when update calls getDocs:
