@@ -1,7 +1,7 @@
 Package.describe({
   name: "artpolikarpov:collection-hooks",
   summary: "Extends Mongo.Collection with before/after hooks for insert/update/remove/find/findOne",
-  version: "0.8.4",
+  version: "0.8.5",
   git: "https://github.com/artpolikarpov/meteor-collection-hooks.git"
 });
 

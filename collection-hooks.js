@@ -84,6 +84,10 @@ CollectionHooks.extendCollectionInstance = function extendCollectionInstance(sel
   // Example: collection.hookOptions.after.update = {fetchPrevious: false};
   self.hookOptions = EJSON.clone(CollectionHooks.defaults);
 
+  self.direct = {
+    _name: self._name
+  };
+
   // Wrap mutator methods, letting the defined advice do the work
   _.each(advices, function (advice, method) {
     var collection = Meteor.isClient || method === "upsert" ? self : self._collection;
