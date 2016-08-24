@@ -26,6 +26,11 @@ CollectionHooks.defineAdvice("insert", function (userId, _super, instance, aspec
   function after(id, err) {
     var doc = args[0];
     if (id) {
+      // In some cases (namely Meteor.users on Meteor 1.4+), the _id property
+      // is a raw mongo _id object. We need to extract the _id from this object
+      if (_.isObject(id) && id.ops) {
+        id = id.ops && id.ops[0] && id.ops[0]._id
+      }
       doc = EJSON.clone(args[0]);
       doc._id = id;
     }
@@ -40,12 +45,14 @@ CollectionHooks.defineAdvice("insert", function (userId, _super, instance, aspec
 
   if (async) {
     args[args.length - 1] = function (err, obj) {
+      //console.log('INSERT; obj:', obj);
       after(obj && obj[0] && obj[0]._id || obj, err);
       return callback.apply(this, arguments);
     };
     return _super.apply(self, args);
   } else {
     ret = _super.apply(self, args);
+    //console.log('INSERT; ret:', ret);
     return after(ret && ret[0] && ret[0]._id || ret);
   }
 });
